@@ -4,6 +4,9 @@ import torch.optim as optim
 import numpy as np
 import random
 import os
+import pandas as pd
+
+btcusdt = pd.read_csv('historical_data.csv', parse_dates=["timestamp"], index_col='timestamp')
 
 def time_split(x, train_size = 0.75):
   i = int(len(x) * train_size)
