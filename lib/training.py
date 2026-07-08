@@ -34,39 +34,50 @@ torch.cuda.manual_seed_all(SEED)
 
 target = 'close_log_return'
 
-for lag in range(1, 7):
+feature_cols = [
+    'close_log_return_lag_1',
+    'close_log_return_lag_2',
+    'close_log_return_lag_3',
+    'close_log_return_lag_4',
+    'close_log_return_lag_5',
+    'close_log_return_lag_6'
+]
 
-    print(f"\n========== Training Lag {lag} ==========")
+# 2. Extract them from your train/test DataFrames as a NumPy array
+X_train_np = btcusdt_train[feature_cols].values
+X_test_np  = btcusdt_test[feature_cols].values
+
+print(f"\n========== Training model  ==========")
 
     # -------------------------------------------------------
     # 1. CREATE TENSORS FROM DATAFRAME
     # -------------------------------------------------------
 
-    features = [f'close_log_return_lag_{lag}']
+features = [f'close_log_return_lag_']
 
-    X_train = torch.tensor(btcusdt_train[features].values, dtype=torch.float32)
-    X_test  = torch.tensor(btcusdt_test[features].values, dtype=torch.float32)
+X_train = torch.tensor(btcusdt_train[feature_cols].values,dtype=torch.float32)
+X_test = torch.tensor(btcusdt_test[feature_cols].values,dtype=torch.float32)
 
-    y_train = torch.tensor(btcusdt_train[target].values, dtype=torch.float32).unsqueeze(1)
-    y_test  = torch.tensor(btcusdt_test[target].values, dtype=torch.float32).unsqueeze(1)
+model = nn.Linear(6, 1)
+
+y_train = torch.tensor(btcusdt_train[target].values, dtype=torch.float32).unsqueeze(1)
+y_test  = torch.tensor(btcusdt_test[target].values, dtype=torch.float32).unsqueeze(1)
 
     # -------------------------------------------------------
     # 2. DEFINE MODEL
     # -------------------------------------------------------
 
-    no_features = len(features)
+no_features = len(features)
 
-    model = nn.Linear(no_features, 1)
+criterion = nn.HuberLoss()
 
-    criterion = nn.HuberLoss()
-
-    optimizer = optim.SGD(model.parameters(), lr=0.01)
+optimizer = optim.SGD(model.parameters(), lr=0.01)
 
     # -------------------------------------------------------
     # 3. TRAINING LOOP
     # -------------------------------------------------------
 
-    for epoch in range(5000):
+for epoch in range(5000):
 
         optimizer.zero_grad()
 
@@ -79,18 +90,39 @@ for lag in range(1, 7):
         optimizer.step()
 
         if epoch % 500 == 0:
-            print(f"Lag {lag} | Epoch: {epoch} | Loss: {loss.item()}")
+            print(f"Epoch: {epoch} | Loss: {loss.item()}")
 
     # -------------------------------------------------------
     # 4. SAVE MODEL
     # -------------------------------------------------------
 
-    torch.save(model.state_dict(), f"model_lag_{lag}.pth")
+torch.save(model.state_dict(), f"model_lag_.pth")
 
     # -------------------------------------------------------
     # 5. CHECK TRAINED PARAMETERS
     # -------------------------------------------------------
 
-    print("Final weight:", model.weight.data)
-    print("Final bias:", model.bias.data)
-    print(f"Model saved as model_lag_{lag}.pth")
+print("Final weight:", model.weight.data)
+print("Final bias:", model.bias.data)
+torch.save(model.state_dict(), "model_all_lags.pth")
+print("Model saved as model_all_lags.pth")
+
+model.eval()
+
+with torch.no_grad():
+    test_pred = model(X_test)
+    test_loss = criterion(test_pred, y_test)
+
+print(f"Test Loss: {test_loss.item()}")
+
+pred_np = test_pred.numpy().flatten()
+actual_np = y_test.numpy().flatten()
+
+corr = np.corrcoef(pred_np, actual_np)[0, 1]
+print("Correlation:", corr)
+
+direction_correct = (
+    (pred_np > 0) == (actual_np > 0)
+).mean()
+
+print("Directional Accuracy:", direction_correct)
