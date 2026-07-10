@@ -5,9 +5,10 @@ import numpy as np
 import random
 import os
 import pandas as pd
+from OLD_BTC_DATA import url
 
-btcusdt = pd.read_csv('historical_data.csv', parse_dates=["timestamp"], index_col='timestamp')
-
+#btcusdt = pd.read_csv('historical_data.csv', parse_dates=["timestamp"], index_col='timestamp')
+btcusdt = pd.read_csv(url, parse_dates=["timestamp"], index_col='timestamp')
 df = pd.DataFrame()
 
 def time_split(x, train_size = 0.75):
@@ -105,12 +106,7 @@ torch.save(model.state_dict(), f"model_lag_.pth")
     # -------------------------------------------------------
 
 print("Final weight:", model.weight.data)
-mwd = model.weight.data.detach().numpy()
-
 print("Final bias:", model.bias.data)
-mbd = model.bias.data.detach().numpy()
-
-df.to_csv['Weight and bias'] = df[mwd, mbd]
 
 torch.save(model.state_dict(), "model_all_lags.pth")
 print("Model saved as model_all_lags.pth")

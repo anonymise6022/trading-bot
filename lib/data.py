@@ -7,7 +7,7 @@ def download_his_data():
 
     symbol = 'BTC/USDT'
     timeframe = '1h'
-    limit = 1000
+    limit = 1000  # Number of candles to fetch
 
     print(f"Fetching historical data for {symbol}...")
 
