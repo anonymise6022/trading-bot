@@ -4,8 +4,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-# Load the historical data
-df = pd.read_csv('historical_data.csv')
+# Load the data (depending on user's choice)
+user_input = input("Which results do you want to use? 40k or latest?: ")
+
+if user_input == "latest":
+    df = pd.read_csv('historical_data.csv')
+else:
+    df = pd.read_csv('BTCUSDT-1h.csv')
 
 # Define the model architecture and load the saved model
 model = nn.Linear(6, 1)

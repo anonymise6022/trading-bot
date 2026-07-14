@@ -5,10 +5,18 @@ import numpy as np
 import random
 import os
 import pandas as pd
-from OLD_BTC_DATA import url
 
-#btcusdt = pd.read_csv('historical_data.csv', parse_dates=["timestamp"], index_col='timestamp')
-btcusdt = pd.read_csv(url, parse_dates=["timestamp"], index_col='timestamp')
+# ask which data to use: old static one or new latest 1000 candles
+user_input = input("Which dataset do you want to use? 40k or latest?: ")
+
+# if user wants to use the latest 1000 candles dataset
+if user_input == "latest":
+    btcusdt = pd.read_csv('historical_data.csv', parse_dates=["timestamp"], index_col='timestamp')
+
+# if user wants to use the old static dataset
+else:
+     btcusdt = pd.read_csv('BTCUSDT-1h.csv', parse_dates=["open_time"], index_col='open_time')
+
 df = pd.DataFrame()
 
 def time_split(x, train_size = 0.75):
