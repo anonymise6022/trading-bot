@@ -1,10 +1,15 @@
 import pandas as pd
 import numpy as np
 import ccxt
+import requests
+
+# -------------------------------------------------------
+# 1. FUNCTION TO DOWNLOAD HISTORICAL DATA FROM BINANCE
+# -------------------------------------------------------
 
 def download_his_data():
     exchange = ccxt.binance()
-
+    
     symbol = 'BTC/USDT'
     timeframe = '1h'
     limit = 1000  # Number of candles to fetch
@@ -28,7 +33,63 @@ def download_his_data():
     # Remove rows with NaN values created by shift()
     df = df.dropna()
 
-    df.to_csv('historical_data.csv', index=False)
+# -------------------------------------------------------
+# 2. DOWNLOAD OPEN INTEREST DATA FROM BINANCE
+# -------------------------------------------------------
+    
+    url = "https://fapi.binance.com/futures/data/openInterestHist"
+    params = {
+    "symbol": "BTCUSDT",
+    "period": "1h",
+    "limit": 1000
+    }
+
+    data = requests.get(url, params=params).json() 
+    oi_df = pd.DataFrame(data)
+
+    # Convert timestamp
+    oi_df["timestamp"] = pd.to_datetime(oi_df["timestamp"], unit="ms")
+
+    # Rename the useful columns
+    oi_df = oi_df.rename(columns={
+    "sumOpenInterest": "open_interest",
+    "sumOpenInterestValue": "open_interest_value"
+    })
+
+    # Keep only what I need
+    oi_df = oi_df[
+    ["timestamp", "open_interest", "open_interest_value"]
+    ]   
+
+# -------------------------------------------------------
+# 3. MERGE THE DATAFRAMES
+# -------------------------------------------------------
+
+    merged = df.merge(oi_df, on="timestamp", how="left")
+    merged = merged.dropna(subset=["open_interest"]) 
+
+# -------------------------------------------------------
+# 4. NOTIONAL OI AND LAGS
+# -------------------------------------------------------
+    
+# calculating notional open interest
+    merged["notional_oi"] = (merged["open_interest"] * merged["close"])
+
+    # calculating the momentum of notional open interest
+    merged["oi_momentum"] = (merged["notional_oi"] / merged["notional_oi"].shift(1)) - 1
+
+    # creating lags
+    for lag in range(1, 7):
+        merged[f"oi_momentum_lag_{lag}"] = (
+            merged["oi_momentum"].shift(lag)
+        )   
+    merged = merged.dropna()
+
+# -------------------------------------------------------
+# 5. SAVE THE MERGED DATA TO CSV
+# -------------------------------------------------------
+
+    merged.to_csv('historical_data.csv', index=False)
 
     print(f"Historical data for {symbol} saved to 'historical_data.csv'.")
 
