@@ -40,25 +40,35 @@ torch.cuda.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED)
 
 # -------------------------------------------------------
-# Train one model for each lag
+# Train one model for each lag and oi
 # -------------------------------------------------------
 
 target = 'close_log_return'
 
-feature_cols = [
+use_oi = True
+feature_log_cols = [
     'close_log_return_lag_1',
     'close_log_return_lag_2',
     'close_log_return_lag_3',
     'close_log_return_lag_4',
     'close_log_return_lag_5',
     'close_log_return_lag_6',
-    #'oi_momentum_lag_1',
-    #'oi_momentum_lag_2',
-    #'oi_momentum_lag_3',
-    #'oi_momentum_lag_4',
-    #'oi_momentum_lag_5',
-    #'oi_momentum_lag_6',
 ]
+
+feature_oi_cols = [
+    'oi_momentum_lag_1',
+    'oi_momentum_lag_2',
+    'oi_momentum_lag_3',
+    'oi_momentum_lag_4',
+    'oi_momentum_lag_5',
+    'oi_momentum_lag_6',
+]
+
+#check if user wants to use open interest features
+if use_oi == True:
+    feature_cols = feature_log_cols + feature_oi_cols
+else:
+    feature_cols = feature_log_cols
 
 # 2. Extract them from your train/test DataFrames as a NumPy array
 X_train_np = btcusdt_train[feature_cols].values
