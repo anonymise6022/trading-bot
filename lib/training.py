@@ -76,11 +76,9 @@ X_test_np  = btcusdt_test[feature_cols].values
 
 print(f"\n========== Training model  ==========")
 
-    # -------------------------------------------------------
-    # 1. CREATE TENSORS FROM DATAFRAME
-    # -------------------------------------------------------
-
-features = [f'close_log_return_lag_']
+# -------------------------------------------------------
+# 1. CREATE TENSORS FROM DATAFRAME
+# -------------------------------------------------------
 
 X_train = torch.tensor(btcusdt_train[feature_cols].values,dtype=torch.float32)
 X_test = torch.tensor(btcusdt_test[feature_cols].values,dtype=torch.float32)
@@ -94,8 +92,6 @@ y_test  = torch.tensor(btcusdt_test[target].values, dtype=torch.float32).unsquee
     # -------------------------------------------------------
     # 2. DEFINE MODEL
     # -------------------------------------------------------
-
-no_features = len(features)
 
 criterion = nn.HuberLoss()
 
@@ -134,8 +130,10 @@ torch.save(model.state_dict(), f"model_lag_.pth")
 print("Final weight:", model.weight.data)
 print("Final bias:", model.bias.data)
 
-torch.save(model.state_dict(), "model_just_lags.pth")
-#torch.save(model.state_dict(), "model_all_lags_oi.pth")
+if USE_OI == True:
+    torch.save(model.state_dict(), "model_price_oi.pth")
+else:
+    torch.save(model.state_dict(), "model_price_only.pth")
 print("Model saved as model_all_lags.pth")
 
 model.eval()
