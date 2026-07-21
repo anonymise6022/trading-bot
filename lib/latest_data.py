@@ -68,6 +68,10 @@ def download_his_data():
     merged = df.merge(oi_df, on="timestamp", how="left")
     merged = merged.dropna(subset=["open_interest"]) 
 
+    # Convert the columns to numeric, coercing errors to NaN
+    merged["open_interest"] = pd.to_numeric(merged["open_interest"], errors="coerce")
+    merged["open_interest_value"] = pd.to_numeric(merged["open_interest_value"], errors="coerce")
+
 # -------------------------------------------------------
 # 4. NOTIONAL OI AND LAGS
 # -------------------------------------------------------

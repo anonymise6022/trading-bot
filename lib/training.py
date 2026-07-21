@@ -51,7 +51,13 @@ feature_cols = [
     'close_log_return_lag_3',
     'close_log_return_lag_4',
     'close_log_return_lag_5',
-    'close_log_return_lag_6'
+    'close_log_return_lag_6',
+    #'oi_momentum_lag_1',
+    #'oi_momentum_lag_2',
+    #'oi_momentum_lag_3',
+    #'oi_momentum_lag_4',
+    #'oi_momentum_lag_5',
+    #'oi_momentum_lag_6',
 ]
 
 # 2. Extract them from your train/test DataFrames as a NumPy array
@@ -69,7 +75,8 @@ features = [f'close_log_return_lag_']
 X_train = torch.tensor(btcusdt_train[feature_cols].values,dtype=torch.float32)
 X_test = torch.tensor(btcusdt_test[feature_cols].values,dtype=torch.float32)
 
-model = nn.Linear(6, 1)
+model_size = len(feature_cols)
+model = nn.Linear(model_size, 1)
 
 y_train = torch.tensor(btcusdt_train[target].values, dtype=torch.float32).unsqueeze(1)
 y_test  = torch.tensor(btcusdt_test[target].values, dtype=torch.float32).unsqueeze(1)
@@ -108,6 +115,7 @@ for epoch in range(5000):
     # -------------------------------------------------------
 
 torch.save(model.state_dict(), f"model_lag_.pth")
+#torch.save(model.state_dict(), f"model_oi_lag_.pth")
 
     # -------------------------------------------------------
     # 5. CHECK TRAINED PARAMETERS
@@ -116,7 +124,8 @@ torch.save(model.state_dict(), f"model_lag_.pth")
 print("Final weight:", model.weight.data)
 print("Final bias:", model.bias.data)
 
-torch.save(model.state_dict(), "model_all_lags.pth")
+torch.save(model.state_dict(), "model_just_lags.pth")
+#torch.save(model.state_dict(), "model_all_lags_oi.pth")
 print("Model saved as model_all_lags.pth")
 
 model.eval()
