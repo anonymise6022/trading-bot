@@ -12,15 +12,21 @@ if user_input == "latest":
 else:
     df = pd.read_csv('BTCUSDT-1h.csv')
 
+use_oi = True  # Set to True if you want to use open interest data, False otherwise
+
+checkpoint = torch.load("model_price_oi.pth" if use_oi else "model_price_only.pth")
+feature_cols = checkpoint['features']
+model_size = checkpoint['model_size']
+
 # Define the model architecture and load the saved model
-model = nn.Linear(6, 1)
-model.load_state_dict(torch.load("model_all_lags.pth"))
+model = nn.Linear(model_size, 1)
+model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()
 
 #converting lags to tensor and making prediction
-lags = df.iloc[-1, -6:].values.astype(float)
-lags_tensor = torch.tensor(lags, dtype=torch.float32)
+latest_features = df[feature_cols].iloc[-1].values.astype(float)
+features_tensor = torch.tensor(latest_features, dtype=torch.float32)
 
 #the prediction through matrix multiplication of lags and model weights, adding the bias
-prediction = model(lags_tensor.unsqueeze(0)).item()
+prediction = model(features_tensor.unsqueeze(0)).item()
 print(f"Prediction for {prediction}")

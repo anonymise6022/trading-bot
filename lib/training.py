@@ -120,21 +120,28 @@ for epoch in range(5000):
     # 4. SAVE MODEL
     # -------------------------------------------------------
 
-torch.save(model.state_dict(), f"model_lag_.pth")
-#torch.save(model.state_dict(), f"model_oi_lag_.pth")
+print("Final weight:", model.weight.data)
+print("Final bias:", model.bias.data)
+
+
+if use_oi == True:
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'features': feature_cols,
+        'model_size': model_size
+    }, "model_price_oi.pth")
+    print("Model saved as model_price_oi.pth")
+else:
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'features': feature_cols,
+        'model_size': model_size
+    }, "model_price_only.pth")
+    print("Model saved as model_price_only.pth")
 
     # -------------------------------------------------------
     # 5. CHECK TRAINED PARAMETERS
     # -------------------------------------------------------
-
-print("Final weight:", model.weight.data)
-print("Final bias:", model.bias.data)
-
-if USE_OI == True:
-    torch.save(model.state_dict(), "model_price_oi.pth")
-else:
-    torch.save(model.state_dict(), "model_price_only.pth")
-print("Model saved as model_all_lags.pth")
 
 model.eval()
 
