@@ -27,7 +27,7 @@ def download_his_data():
     df['close_log_return'] = np.log(df['close'] / df['close'].shift(1))
 
     # Lag it from 1 to 6 candles
-    for lag in range(1, 7):
+    for lag in range(1, 6):
         df[f'close_log_return_lag_{lag}'] = df['close_log_return'].shift(lag)
 
     # Remove rows with NaN values created by shift()
@@ -83,7 +83,7 @@ def download_his_data():
     merged["oi_momentum"] = (merged["notional_oi"] / merged["notional_oi"].shift(1)) - 1
 
     # creating lags
-    for lag in range(1, 7):
+    for lag in range(1, 6):
         merged[f"oi_momentum_lag_{lag}"] = (
             merged["oi_momentum"].shift(lag)
         )   

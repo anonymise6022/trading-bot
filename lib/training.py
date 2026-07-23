@@ -5,6 +5,7 @@ import numpy as np
 import random
 import os
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
 # ask which data to use: old static one or new latest 1000 candles
 user_input = input("Which dataset do you want to use? 40k or latest?: ")
@@ -15,7 +16,7 @@ if user_input == "latest":
 
 # if user wants to use the old static dataset
 else:
-     btcusdt = pd.read_csv('BTCUSDT-1h.csv', parse_dates=["open_time"], index_col='open_time')
+     btcusdt = pd.read_csv('BTCUSDT-1hNEW.csv', parse_dates=["open_time"], index_col='open_time')
 
 df = pd.DataFrame()
 
@@ -45,7 +46,7 @@ torch.cuda.manual_seed_all(SEED)
 
 target = 'close_log_return'
 
-use_oi = True
+use_oi = False
 feature_log_cols = [
     'close_log_return_lag_1',
     'close_log_return_lag_2',
@@ -53,6 +54,8 @@ feature_log_cols = [
     'close_log_return_lag_4',
     'close_log_return_lag_5',
     'close_log_return_lag_6',
+    'sma_cross',
+    'sma_trend_strength',
 ]
 
 feature_oi_cols = [
@@ -61,7 +64,6 @@ feature_oi_cols = [
     'oi_momentum_lag_3',
     'oi_momentum_lag_4',
     'oi_momentum_lag_5',
-    'oi_momentum_lag_6',
 ]
 
 #check if user wants to use open interest features
@@ -80,8 +82,17 @@ print(f"\n========== Training model  ==========")
 # 1. CREATE TENSORS FROM DATAFRAME
 # -------------------------------------------------------
 
-X_train = torch.tensor(btcusdt_train[feature_cols].values,dtype=torch.float32)
-X_test = torch.tensor(btcusdt_test[feature_cols].values,dtype=torch.float32)
+scaler = StandardScaler()
+
+# fit ONLY on training data
+X_train_scaled = scaler.fit_transform(btcusdt_train[feature_cols])
+
+# use the same scaler on test data
+X_test_scaled = scaler.transform(btcusdt_test[feature_cols])
+
+# convert to tensors
+X_train = torch.tensor(X_train_scaled, dtype=torch.float32)
+X_test = torch.tensor(X_test_scaled, dtype=torch.float32)
 
 model_size = len(feature_cols)
 model = nn.Linear(model_size, 1)
@@ -162,3 +173,5 @@ direction_correct = (
 ).mean()
 
 print("Directional Accuracy:", direction_correct)
+
+print("Baseline accuracy:", (actual_np > 0).mean())
