@@ -44,7 +44,7 @@ torch.cuda.manual_seed_all(SEED)
 # Train one model for each lag and oi
 # -------------------------------------------------------
 
-target = 'close_log_return'
+target = 'future_close_log_return'
 
 use_oi = False
 feature_log_cols = [
@@ -54,8 +54,8 @@ feature_log_cols = [
     'close_log_return_lag_4',
     'close_log_return_lag_5',
     'close_log_return_lag_6',
-    'sma_cross',
-    'sma_trend_strength',
+    'ema_distance',
+    'ema_trend_strength',
 ]
 
 feature_oi_cols = [
