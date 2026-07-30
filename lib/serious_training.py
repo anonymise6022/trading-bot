@@ -44,19 +44,21 @@ torch.cuda.manual_seed_all(SEED)
 # Train one model for each lag and oi
 # -------------------------------------------------------
 
-target = 'future_close_log_return'
+target = "signal"
 
 use_oi = False
 feature_log_cols = [
-    'close_log_return_lag_1',
-    'close_log_return_lag_2',
-    'close_log_return_lag_3',
-    'close_log_return_lag_4',
-    'close_log_return_lag_5',
-    'close_log_return_lag_6',
-    'ema_distance',
-    'ema_trend_strength',
-    
+    "ema_trend_strength",
+    "ema_distance",
+    "momentum_12",
+    "rsi_normalized",
+    "relative_volume_20",
+    "volume_change",
+    "atr_percent",
+    "volatility_20",
+    "ema_cross",
+    "candle_strength",
+    "trend_regime"
 ]
 
 feature_oi_cols = [
@@ -96,30 +98,35 @@ X_train = torch.tensor(X_train_scaled, dtype=torch.float32)
 X_test = torch.tensor(X_test_scaled, dtype=torch.float32)
 
 model_size = len(feature_cols)
-model = nn.Linear(model_size, 1)
+model = nn.Sequential(
+    nn.Linear(11,16),
+    nn.ReLU(),
+    nn.Dropout(0.2),
+    nn.Linear(16,3)
+)
 
-y_train = torch.tensor(btcusdt_train[target].values, dtype=torch.float32).unsqueeze(1)
-y_test  = torch.tensor(btcusdt_test[target].values, dtype=torch.float32).unsqueeze(1)
+y_train = torch.tensor(btcusdt_train[target].values,dtype=torch.long)
+y_test = torch.tensor(btcusdt_test[target].values,dtype=torch.long)
 
     # -------------------------------------------------------
     # 2. DEFINE MODEL
     # -------------------------------------------------------
 
-criterion = nn.HuberLoss()
+criterion = nn.CrossEntropyLoss()
 
-optimizer = optim.SGD(model.parameters(), lr=0.01)
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     # -------------------------------------------------------
     # 3. TRAINING LOOP
     # -------------------------------------------------------
 
-for epoch in range(5000):
+for epoch in range(1000):
 
         optimizer.zero_grad()
 
-        y_pred = model(X_train)
+        logits = model(X_train)
 
-        loss = criterion(y_pred, y_train)
+        loss = criterion(logits, y_train)
 
         loss.backward()
 
@@ -132,8 +139,8 @@ for epoch in range(5000):
     # 4. SAVE MODEL
     # -------------------------------------------------------
 
-print("Final weight:", model.weight.data)
-print("Final bias:", model.bias.data)
+for name, param in model.named_parameters():
+    print(name, param.data)
 
 
 if use_oi == True:
@@ -158,21 +165,56 @@ else:
 model.eval()
 
 with torch.no_grad():
-    test_pred = model(X_test)
-    test_loss = criterion(test_pred, y_test)
+
+    # Raw model output
+    test_logits = model(X_test)
+
+    # Classification loss
+    test_loss = criterion(test_logits,y_test)
+
+    # Convert logits into probabilities
+    predicted_class = torch.argmax(test_logits, dim=1)
+
+    accuracy = (predicted_class == y_test).float().mean()
 
 print(f"Test Loss: {test_loss.item()}")
 
-pred_np = test_pred.numpy().flatten()
-actual_np = y_test.numpy().flatten()
+accuracy = (predicted_class == y_test).float().mean()
+print("Classification Accuracy:",accuracy.item())
 
-corr = np.corrcoef(pred_np, actual_np)[0, 1]
-print("Correlation:", corr)
+baseline = y_test.bincount().float().max() / len(y_test)
+print("Baseline Accuracy:", baseline.item())
 
-direction_correct = (
-    (pred_np > 0) == (actual_np > 0)
-).mean()
+pred_np = (predicted_class.cpu().numpy().flatten())
 
-print("Directional Accuracy:", direction_correct)
+actual_np = (y_test.cpu().numpy().flatten())
 
-print("Baseline accuracy:", (actual_np > 0).mean())
+# Accuracy when the model predicts UP
+long_predictions = (pred_np == 2)
+
+short_predictions = (pred_np == 0)
+
+neutral_predictions = (pred_np == 1)
+
+if long_predictions.sum()>0:
+
+    long_precision = (actual_np[long_predictions] == 2).mean()
+
+    print("Long precision:",long_precision)
+
+if short_predictions.sum()>0:
+
+    short_precision = (actual_np[short_predictions] == 0).mean()
+
+    print("Short precision:",short_precision)
+
+print("Long Signals:",long_predictions.sum())
+
+print("Short Signals:",short_predictions.sum())
+
+print(btcusdt["signal"].value_counts())
+
+probabilities = torch.softmax(test_logits, dim=1)
+
+for i in range(10):
+    print(probabilities[i])

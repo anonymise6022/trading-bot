@@ -6,41 +6,127 @@ url = 'BTCUSDT-1h.csv'
 
 df = pd.read_csv(url)
 
-# Calculate close log return
-df['close_log_return'] = np.log(df['close'] / df['close'].shift(1))
+# Current return
+df["close_log_return"] = np.log(df["close"] / df["close"].shift(1))
 
-# Calculate future log return (target)
-df['future_close_log_return'] = np.log(
-    df['close'].shift(-24) / df['close']
-)
+# Future 6-hour return
+df["future_close_log_return"] = np.log(df["close"].shift(-24) / df["close"])
 
-# Previous returns as features
-for lag in range(1, 7):
-    df[f'close_log_return_lag_{lag}'] = (
-        df['close_log_return'].shift(lag)
-    )
+df["signal"] = 0
 
-# Calculate the 20-period EMA of the close price, where ewm is the exponential weighted function in pandas. The span parameter controls the decay, with a higher span giving more weight to recent prices. The adjust parameter is set to False to use the simple moving average formula.
-df['ema5'] = df['close'].ewm(span=5, adjust=False).mean()
-df['ema20'] = df['close'].ewm(span=20, adjust=False).mean()
+# Strong upward movement
+df.loc[df["future_close_log_return"] > 0.005,"signal"] = 1
 
-# Previous candle values only
-df["ema_5_prev"] = df["ema5"].shift(1)
-df["ema_20_prev"] = df["ema20"].shift(1)
+# Strong downward movement
+df.loc[df["future_close_log_return"] < -0.005,"signal"] = -1
 
-# Detect crossover
-#df["ema_cross"] = 0
+df["signal"] = df["signal"] + 1
 
-# bullish crossover
-#df.loc[(df["ema_5_prev"] <= df["ema_20_prev"]) & (df["ema5"] > df["ema20"]),"ema_cross"] = 1
+# -------------------------------------------------------
+# 1. EMA TREND FEATURES
+# -------------------------------------------------------
 
-# bearish crossover
-#df.loc[(df["ema_5_prev"] >= df["ema_20_prev"]) & (df["ema5"] < df["ema20"]),"ema_cross"] = -1
+df["ema5"] = df["close"].ewm(span=5,adjust=False).mean()
 
-df["ema_trend_strength"] = (df["ema5"].shift(1) -df["ema20"].shift(1)) / df["ema20"].shift(1)
+df["ema20"] = df["close"].ewm(span=20,adjust=False).mean()
 
-# EMA distance
-df['ema_distance'] = (df['close'] - df['ema20']) / df['ema20']
+# Positive = bullish EMA trend
+# Negative = bearish EMA trend
+df["ema_trend_strength"] = (df["ema5"].shift(1) - df["ema20"].shift(1)) / df["ema20"].shift(1)
+
+# Price distance from the EMA
+# Positive = price above EMA
+# Negative = price below EMA
+df["ema_distance"] = (df["close"].shift(1) - df["ema20"].shift(1)) / df["ema20"].shift(1)
+
+# -------------------------------------------------------
+# 2. MOMENTUM
+# -------------------------------------------------------
+
+# 12-hour momentum
+# Positive = price higher than 12 hours ago
+# Negative = price lower than 12 hours ago
+df["momentum_12"] = (df["close"].shift(1)/ df["close"].shift(13)) - 1
+
+# -------------------------------------------------------
+# 3. RSI-14
+# -------------------------------------------------------
+
+price_change = df["close"].diff()
+
+gain = price_change.clip(lower=0)
+
+loss = -price_change.clip(upper=0)
+
+average_gain = gain.ewm(alpha=1 / 14,adjust=False).mean()
+
+average_loss = loss.ewm(alpha=1 / 14,adjust=False).mean()
+
+rs = average_gain / average_loss
+
+df["rsi_14"] = (100 - 100 / (1 + rs))
+
+# Shift it so the feature only uses
+# information available before the prediction candle
+df["rsi_14"] = (df["rsi_14"].shift(1))
+
+df["rsi_normalized"] = (df["rsi_14"] - 50) / 50
+
+# -------------------------------------------------------
+# 4. RELATIVE VOLUME
+# -------------------------------------------------------
+
+volume_average = (df["volume"].rolling(20).mean())
+
+df["relative_volume_20"] = (df["volume"].shift(1) / volume_average.shift(1))
+df["volume_change"] = (df["volume"].shift(1) /df["volume"].shift(2))
+
+# -------------------------------------------------------
+# 5. ATR
+# -------------------------------------------------------
+
+high_low = df["high"] - df["low"]
+
+high_close = abs(df["high"] - df["close"].shift(1))
+
+low_close = abs(df["low"] - df["close"].shift(1))
+
+tr = pd.concat([high_low, high_close, low_close],axis=1).max(axis=1)
+
+df["atr_14"] = (tr.rolling(14).mean().shift(1))
+
+df["atr_percent"] = (df["atr_14"] / df["close"].shift(1))
+
+# -------------------------------------------------------
+# 6. Volatility
+# -------------------------------------------------------
+
+df["volatility_20"] = (df["close_log_return"].rolling(20).std().shift(1))
+
+# -------------------------------------------------------
+# 7. ema crossover
+# -------------------------------------------------------
+
+df["ema_cross"] = 0
+
+df.loc[(df["ema5"].shift(2) < df["ema20"].shift(2))&(df["ema5"].shift(1) > df["ema20"].shift(1)),"ema_cross"] = 1
+
+df.loc[(df["ema5"].shift(2) > df["ema20"].shift(2))&(df["ema5"].shift(1) < df["ema20"].shift(1)),"ema_cross"] = -1
+
+# -------------------------------------------------------
+# 8. candle strength
+# -------------------------------------------------------
+
+df["candle_strength"] = ((df["close"] - df["open"]) /(df["high"] - df["low"]).replace(0,np.nan)).shift(1)
+
+# -------------------------------------------------------
+# 9. trend regime
+# -------------------------------------------------------
+
+df["trend_regime"] = (df["close"].shift(1) >df["ema20"].shift(1)).astype(int)
+
+# Replace infinite values caused by division by zero
+df = df.replace([np.inf, -np.inf], np.nan)
 
 # Remove missing rows
 df = df.dropna()
@@ -49,3 +135,5 @@ df = df.dropna()
 df.to_csv('BTCUSDT-1hNEW.csv', index=False)
 
 print(f"Historical data for {symbol} saved to BTCUSDT-1hNEW.csv")
+
+print(df["signal"].value_counts())
