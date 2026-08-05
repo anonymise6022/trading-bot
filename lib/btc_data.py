@@ -10,15 +10,15 @@ df = pd.read_csv(url)
 df["close_log_return"] = np.log(df["close"] / df["close"].shift(1))
 
 # Future 6-hour return
-df["future_close_log_return"] = np.log(df["close"].shift(-24) / df["close"])
+df["future_close_log_return"] = np.log(df["close"].shift(-6) / df["close"])
 
 df["signal"] = 0
 
 # Strong upward movement
-df.loc[df["future_close_log_return"] > 0.005,"signal"] = 1
+df.loc[df["future_close_log_return"] > 0.002,"signal"] = 1
 
 # Strong downward movement
-df.loc[df["future_close_log_return"] < -0.005,"signal"] = -1
+df.loc[df["future_close_log_return"] < -0.002,"signal"] = -1
 
 df["signal"] = df["signal"] + 1
 
