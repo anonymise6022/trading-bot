@@ -15,10 +15,10 @@ df["future_close_log_return"] = np.log(df["close"].shift(-6) / df["close"])
 df["signal"] = 0
 
 # Strong upward movement
-df.loc[df["future_close_log_return"] > 0.002,"signal"] = 1
+df.loc[df["future_close_log_return"] > 0.004,"signal"] = 1
 
 # Strong downward movement
-df.loc[df["future_close_log_return"] < -0.002,"signal"] = -1
+df.loc[df["future_close_log_return"] < -0.004,"signal"] = -1
 
 df["signal"] = df["signal"] + 1
 
