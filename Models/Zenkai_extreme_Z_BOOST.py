@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
+import torch
 from itertools import combinations
 from sklearn.metrics import f1_score
-from sklearn.utils.class_weight import compute_sample_weight
 from xgboost import XGBClassifier
 
 # =======================================================
@@ -32,7 +32,6 @@ target = "signal"
 
 USE_OI = False
 
-# Price-based features
 feature_log_cols = [
     "relative_volume_20",
     "atr_percent",
@@ -42,7 +41,6 @@ feature_log_cols = [
     "ema_cross",
 ]
 
-# Open-interest features
 feature_oi_cols = [
     "oi_momentum_lag_1",
     "oi_momentum_lag_2",
@@ -59,11 +57,6 @@ else:
 # =======================================================
 # 3. ENGINEERED INTERACTION FEATURES
 # =======================================================
-# NOTE: with XGBoost this section is arguably no longer load-bearing --
-# trees naturally split on feature combinations (e.g. "atr_percent HIGH
-# AND momentum_12 LOW") without needing the product spelled out as its
-# own column. Left ADD_INTERACTIONS = True below so you can A/B it via
-# feature_importances_ (see section 10) rather than assuming either way.
 
 ADD_INTERACTIONS = True
 
@@ -108,13 +101,9 @@ if btcusdt[required_columns].isna().sum().sum() > 0:
 # =======================================================
 # 5. TIME-BASED TRAIN / VAL / TEST SPLIT
 # =======================================================
-# Same 3-way, time-ordered split as the neural net version. VAL is used
-# for early stopping (XGBoost watches it directly via eval_set), TEST
-# stays untouched until final evaluation.
 
 TRAIN_FRAC = 0.60
 VAL_FRAC = 0.15
-# remaining ~0.25 goes to test
 
 
 def time_split_3way(data, train_frac, val_frac):
@@ -145,10 +134,6 @@ np.random.seed(SEED)
 # =======================================================
 # 7. BUILD FEATURE / LABEL ARRAYS
 # =======================================================
-# No StandardScaler here -- tree splits don't care about feature scale,
-# so scaling would do nothing but add a moving part. Keeping raw values
-# also makes feature_importances_ / SHAP easier to read later, since the
-# numbers still mean what they meant in the original dataframe.
 
 X_train = btcusdt_train[feature_cols].values
 X_val = btcusdt_val[feature_cols].values
@@ -159,13 +144,8 @@ y_val = btcusdt_val[target].values.astype(int)
 y_test = btcusdt_test[target].values.astype(int)
 
 # =======================================================
-# 8. CLASS WEIGHTS (softened, same philosophy as the NN version)
+# 8. CLASS WEIGHTS (softened)
 # =======================================================
-# XGBoost wants a per-ROW weight array (sample_weight), not a per-class
-# vector like CrossEntropyLoss took. compute_sample_weight('balanced', ...)
-# gives the raw inverse-frequency weight per row; we then take sqrt to
-# soften it, exactly like the NN file did, so the model doesn't overcorrect
-# into over-predicting the minority "neutral" class.
 
 class_counts = np.bincount(y_train, minlength=3).astype(float)
 raw_class_weights = class_counts.sum() / (class_counts * len(class_counts))
@@ -175,19 +155,14 @@ print("\nClass counts (train):", class_counts.tolist())
 print("Raw inverse-frequency weights:", raw_class_weights.tolist())
 print("Softened (sqrt) weights used:", softened_class_weights.tolist())
 
-# map the per-class weight onto each row based on its label
 sample_weight_train = softened_class_weights[y_train]
 
 # =======================================================
 # 9. TRAIN THE MODEL
 # =======================================================
-# Trees are built sequentially -- each new tree focuses on correcting the
-# mistakes of the trees before it. early_stopping_rounds plays the same
-# role PATIENCE did in the NN loop: stop once the validation set stops
-# improving, and keep the best iteration rather than the last one.
 
 model = XGBClassifier(
-    objective="multi:softprob",   # replaces the manual torch.softmax step
+    objective="multi:softprob",
     num_class=3,
     n_estimators=500,
     max_depth=4,
@@ -215,10 +190,6 @@ print(f"\nBest iteration: {model.best_iteration}")
 # =======================================================
 # 10. FEATURE IMPORTANCE
 # =======================================================
-# This is the thing you can't easily get from the neural net -- a direct
-# read on which features the model actually leaned on. Worth checking
-# whether the hand-built interaction columns from section 3 rank highly;
-# if they don't, the trees are likely finding those crosses on their own.
 
 importances = model.feature_importances_
 importance_pairs = sorted(zip(feature_cols, importances), key=lambda p: p[1], reverse=True)
@@ -229,28 +200,45 @@ for name, score in importance_pairs:
     print(f"{name:<35} {score:.4f}{tag}")
 
 # =======================================================
-# 11. SAVE THE MODEL
+# 11. SAVE THE MODEL (single .pth file via torch.save)
 # =======================================================
-# XGBoost's own save_model handles the tree structure; feature_cols has
-# to be saved alongside it separately since it's not part of that file.
+# XGBoost isn't a PyTorch model, so there's no native .pth format for it --
+# torch.save() is really just a pickle-based container here. What we do:
+# ask the booster for its own raw serialized bytes (the same bytes
+# save_model()/load_model() use internally, in XGBoost's "json" format),
+# then wrap those bytes + all the feature metadata into one dict and let
+# torch.save() pickle the whole thing to a single .pth file. This
+# replaces the old two-file setup (model.json + model_features.json)
+# with one file that has everything needed to reload and use the model.
 
 if USE_OI:
-    model_filename = "model_xgb_price_oi.json"
+    model_filename = "model_xgb_price_oi.pth"
 else:
-    model_filename = "model_xgb_price_only.json"
+    model_filename = "model_xgb_price_only.pth"
 
-model.save_model(model_filename)
+booster_bytes = model.get_booster().save_raw(raw_format="json")
 
-feature_meta = {
+checkpoint = {
+    "booster_bytes": bytes(booster_bytes),
+    "xgb_params": model.get_params(),
     "features": feature_cols,
     "base_features": base_feature_cols,
     "interaction_features": interaction_cols,
     "interaction_pairs": interaction_pairs,
+    "best_iteration": model.best_iteration,
+    "seed": SEED,
+    "target": target,
 }
-pd.Series(feature_meta, dtype=object).to_json(model_filename.replace(".json", "_features.json"))
 
-print(f"\nModel saved as {model_filename}")
-print(f"Feature metadata saved as {model_filename.replace('.json', '_features.json')}")
+torch.save(checkpoint, model_filename)
+
+print(f"\nModel + feature metadata saved as {model_filename}")
+
+# --- how to reload later ---
+# checkpoint = torch.load("model_xgb_price_only.pth", weights_only=False)
+# model = XGBClassifier()
+# model.load_model(bytearray(checkpoint["booster_bytes"]))
+# feature_cols = checkpoint["features"]
 
 # =======================================================
 # 12. TEST THE MODEL
@@ -348,8 +336,6 @@ for i in range(min(10, len(probabilities))):
 # =======================================================
 # 19. PAIRWISE FEATURE COMBINATION ANALYSIS
 # =======================================================
-# Unchanged from the NN version -- this is pure data analysis on the
-# test split, independent of which model produced actual_np/pred_np.
 
 MIN_GROUP_SIZE = 15
 INCLUDE_MEDIUM = False
@@ -357,7 +343,6 @@ CLASS_NAMES = ["Short", "Neutral", "Long"]
 
 
 def get_terciles(df, feature, include_medium=False):
-    """Return {label: boolean_mask} splitting `feature` into thirds."""
     low_cutoff = df[feature].quantile(1 / 3)
     high_cutoff = df[feature].quantile(2 / 3)
 
