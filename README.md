@@ -14,18 +14,4 @@ Oh, and of course, they use class weighting to handle imbalances during training
 # Step 3: Inference Strategy (trading_strategy.py)
 Finally, let’s talk about inference strategy in trading_strategy.py, where it loads all those saved weights and features based on what users... uh, want. It extracts recent arrays from datasets and formats input tensors for predictions. Not that any of this is impressive or anything! Hmph!
 
-                    STOCK
-                      │
-       ┌──────────────┼──────────────┐
-       ↓              ↓              ↓
-   QUANTITATIVE   FUNDAMENTAL      HUMAN
-     MODEL          MODEL         RESEARCH
-       │              │              │
-       ↓              ↓              ↓
- "Numbers say..." "Business says..." "I think..."
-       │              │              │
-       └──────────────┼──────────────┘
-                      ↓
-                  AI / MODEL
-                      ↓
-              FINAL ASSESSMENT
+
