@@ -17,13 +17,20 @@ Company_template = pd.DataFrame(index = Super_rows, columns = Zenaki_columns)
 
 User_input = input("Enter or Add company:")
 
-if os.path.exists("Analysis (fund)/" + User_input + ".csv"):
-    print("Company already exists. Loading data...")
-    Company_template = pd.read_csv("Analysis (fund)/" + User_input + ".csv", index_col=0)
-else:
-    print("Company file does not exist. Creating new file...")
-    Company_template.to_csv("Analysis (fund)/" + User_input + ".csv")
+def Search_validator():
+    return(
+        len(User_input) <= 5 and
+        all(char.isalpha() for char in User_input) and User_input.isupper())
 
+if Search_validator():
+    if os.path.exists("Analysis (fund)/" + User_input + ".csv"):
+        print("Company already exists. Loading data...")
+        Company_template = pd.read_csv("Analysis (fund)/" + User_input + ".csv", index_col=0)
+    else:
+        print("Company file does not exist. Creating new file...")
+        Company_template.to_csv("Analysis (fund)/" + User_input + ".csv")
 
-
+# =======================================================
+# 3. Allowing user to input data for the company
+# =======================================================
 
