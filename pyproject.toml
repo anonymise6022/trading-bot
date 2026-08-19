@@ -1,0 +1,8 @@
+[project]
+name = "btc-quant-suite"
+version = "0.1.0"
+description = "BTC/USDT direction, volatility, and options-pricing quant trading suite"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

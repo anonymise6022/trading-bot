@@ -1,0 +1,8 @@
+# every constant from our risk-management discussion, out of code
+account_equity: 10000
+risk_per_trade: 0.01
+stop_loss_multiplier: 1.5      # x ATR
+min_confidence: 0.45
+min_margin_over_2nd: 0.10
+max_leverage: 10
+daily_loss_limit: 0.05
