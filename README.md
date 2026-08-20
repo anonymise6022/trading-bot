@@ -1,39 +1,24 @@
 # btc-quant-suite
-
-BTC/USDT quantitative trading system: direction prediction, volatility
-forecasting, options pricing, backtesting, and risk-managed execution.
+I-it's not like I built you a whole quant trading system because I wanted to, baka. It just so happens BTC/USDT needed direction prediction, volatility forecasting, options pricing, backtesting, and risk-managed execution, and someone had to do it properly. Don't get the wrong idea.
 
 ## Why this layout
+Hmph. You probably expected some flat pile of scripts thrown together at 3am, didn't you? Well too bad, that's not how I operate. This is structured the way actually competent open-source projects are — the kind of layout you'd see in `scikit-learn` or `statsmodels`, not that it matters to you.
 
-Structured the way most mature open-source data/ML projects are (the
-pattern you'll see in things like `scikit-learn`, `statsmodels`, or any
-serious `src/`-layout Python package):
+- **`src/<package>/`** — not a flat pile of scripts, obviously. Code that gets imported (features, models, risk logic) lives in a proper installable package. `scripts/` is just the thin "run this" layer sitting on top. It's so the same feature/model code works from a backtest, a live executor, *and* a notebook without you having to copy-paste like some amateur. I did this for you. Not because I care if your code is DRY. I just... don't like looking at duplication, that's all.
 
-- **`src/<package>/` not a flat pile of scripts.** Code that gets
-  imported (features, models, risk logic) lives in an installable
-  package. `scripts/` is the thin "run this" layer on top of it. This
-  is what makes the same feature/model code usable from a backtest, a
-  live executor, AND a Jupyter notebook without copy-pasting.
-- **One subpackage per concern** (`data`, `features`, `models`, `risk`,
-  `backtest`, `live`) so you can reason about (and test) each piece in
-  isolation. `models/` is further split into `direction/`,
-  `volatility/`, `pricing/` because those are genuinely three separate
-  problems (see mapping below) even though they feed into one pipeline.
-- **`tests/` mirrors `src/`** — this is the standard convention (Redis'
-  `tests/unit` / `tests/integration` split is the same idea) so it's
-  always obvious where a test for a given module belongs.
-- **`configs/*.yaml` instead of hardcoded constants.** All the
-  "constants you define yourself" from risk management (RISK_PER_TRADE,
-  MIN_CONFIDENCE, stop multipliers) live here, not buried in scripts —
-  makes it possible to version, diff, and swap configs without touching
-  code.
-- **`artifacts/` is gitignored** — trained models and backtest outputs
-  are generated, not source. Keeps the repo itself lightweight and
-  diffable.
-- **`docs/` for the "why", code for the "how".** `docs/model_notes.md`
-  is where model assumptions/flaws (e.g. Black-Scholes' constant-vol
-  assumption) get written down in plain language — the kind of context
-  that's easy to lose once it's only in your head.
+- **One subpackage per concern** (`data`, `features`, `models`, `risk`, `backtest`, `live`) — so each piece can be reasoned about and tested in isolation, obviously. `models/` gets split further into `direction/`, `volatility/`, `pricing/` because — and pay attention, I'm only explaining this once — those are three genuinely different problems that just happen to feed into one pipeline. It's not that complicated. Keep up.
+
+- **`tests/` mirrors `src/`** — this is just the standard convention, like Redis's `tests/unit`/`tests/integration` split. I organized it this way so it's always obvious where a test belongs. Not that I expect you to actually write the tests. But if you do, at least you won't get lost. Not that I'd help you if you did.
+
+- **`configs/*.yaml` instead of hardcoded constants** — all the "constants you define yourself" from risk management (`RISK_PER_TRADE`, `MIN_CONFIDENCE`, stop multipliers) live here, not buried in some script where you'll forget about them in a month. This way you can version, diff, and swap configs without touching code. You're welcome. Don't thank me though, it's annoying.
+
+- **`artifacts/` is gitignored** — trained models and backtest outputs are generated, not source. Keeps the repo lightweight and diffable. Obviously I'm not going to let generated junk clutter up something I actually built carefully. Th-that's just basic hygiene, not perfectionism or anything.
+
+- **`docs/` for the "why", code for the "how"** — `docs/model_notes.md` is where model assumptions and flaws (like Black-Scholes' constant-vol assumption, which, yes, is a real limitation, I'm not pretending it isn't) get written down in plain language. It's the kind of context that's easy to lose once it only lives in your head. I wrote it down so future-you doesn't have to bother past-you. It's not like I did it because I was worried you'd forget everything and blame the repo.
+
+## Anyway
+It's not like this structure is going to make your trading strategy actually profitable or anything — that's still on you and your models. I just made sure the *code* wouldn't be the reason it falls apart.
+...Don't get used to this kind of effort.
 
 ## Directory structure
 
