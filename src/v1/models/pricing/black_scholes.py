@@ -2,7 +2,7 @@
 import numpy as np
 from scipy.stats import norm
 
-def black_scholes_greeks(S, K, T, r, sigma, option_type="call"):
+def black_scholes_greeks(S, K, T, r, sigma, option_type):
     """
     S: Current Stock Price
     K: Strike Price
@@ -41,11 +41,11 @@ def black_scholes_greeks(S, K, T, r, sigma, option_type="call"):
     vega = (S * n_prime_d1 * np.sqrt(T)) / 100 # Divided by 100 to show per 1% change in IV
 
     return {
-        "Price": round(price, 4),
+        "Price": np.round(price, 4),
         "Delta": np.round(delta, 4),
-        "Gamma": round(gamma, 4),
-        "Theta": round(theta, 4), # Daily decay
-        "Vega": round(vega, 4)     # Price change per 1% IV move
+        "Gamma": np.round(gamma, 4),
+        "Theta": np.round(theta, 4), # Daily decay
+        "Vega": np.round(vega, 4)     # Price change per 1% IV move
     }
 
 # 🚀 Example Usage:
