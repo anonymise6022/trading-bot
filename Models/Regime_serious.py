@@ -18,7 +18,8 @@ user_input = input("Which dataset do you want to use? 40k or latest?: ").strip()
 
 if user_input == "latest":
     btcusdt = pd.read_csv(
-        "historical_data.csv",
+        #"historical_data.csv",
+        "Jacob_data_daily.csv",
         parse_dates=["timestamp"],
         index_col="timestamp"
     )
